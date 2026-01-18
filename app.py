@@ -14,35 +14,61 @@ db.init_app(app)
 def index():
     return '<h1>Late Show API</h1>'
 
+# GET all episodes
 @app.route('/episodes', methods=['GET'])
 def get_episodes():
     episodes = Episode.query.all()
-    return jsonify([episode.to_dict(only=('id', 'date', 'number')) for episode in episodes]), 200
+    episodes_list = [episode.to_dict(only=('id', 'date', 'number')) for episode in episodes]
+    return jsonify(episodes_list), 200
 
+# GET episode by id
 @app.route('/episodes/<int:id>', methods=['GET'])
 def get_episode(id):
     episode = Episode.query.filter(Episode.id == id).first()
+    
     if not episode:
         return jsonify({"error": "Episode not found"}), 404
-    return jsonify(episode.to_dict(only=('id', 'date', 'number', 'appearances.id', 'appearances.rating', 'appearances.episode_id', 'appearances.guest_id', 'appearances.guest.id', 'appearances.guest.name', 'appearances.guest.occupation'))), 200
+    
+    episode_dict = episode.to_dict(only=(
+        'id', 'date', 'number', 
+        'appearances.id', 'appearances.rating', 
+        'appearances.episode_id', 'appearances.guest_id', 
+        'appearances.guest.id', 'appearances.guest.name', 
+        'appearances.guest.occupation'
+    ))
+    
+    return jsonify(episode_dict), 200
 
+# GET all guests
 @app.route('/guests', methods=['GET'])
 def get_guests():
     guests = Guest.query.all()
-    return jsonify([guest.to_dict(only=('id', 'name', 'occupation')) for guest in guests]), 200
+    guests_list = [guest.to_dict(only=('id', 'name', 'occupation')) for guest in guests]
+    return jsonify(guests_list), 200
 
+# POST new appearance
 @app.route('/appearances', methods=['POST'])
 def create_appearance():
     try:
         data = request.get_json()
-        appearance = Appearance(
+        
+        new_appearance = Appearance(
             rating=data.get('rating'),
             episode_id=data.get('episode_id'),
             guest_id=data.get('guest_id')
         )
-        db.session.add(appearance)
+        
+        db.session.add(new_appearance)
         db.session.commit()
-        return jsonify(appearance.to_dict(only=('id', 'rating', 'guest_id', 'episode_id', 'episode.id', 'episode.date', 'episode.number', 'guest.id', 'guest.name', 'guest.occupation'))), 201
+        
+        appearance_dict = new_appearance.to_dict(only=(
+            'id', 'rating', 'guest_id', 'episode_id',
+            'episode.id', 'episode.date', 'episode.number',
+            'guest.id', 'guest.name', 'guest.occupation'
+        ))
+        
+        return jsonify(appearance_dict), 201
+        
     except ValueError as e:
         return jsonify({"errors": [str(e)]}), 400
     except Exception as e:
